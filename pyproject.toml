@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gv-crm-pipeline"
+version = "0.1.0"
+description = "Google Voice voicemails -> WhisperX -> Twenty CRM, with follow-up detection."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "google-api-python-client>=2.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "PyYAML>=6.0",
+    "requests>=2.28.0",
+    "dateparser>=1.2.0",
+]
+
+[project.optional-dependencies]
+# WhisperX is heavy (torch, etc.) and often already installed system-wide,
+# so it's an opt-in extra rather than a hard dependency.
+transcribe = ["whisperx"]
+
+[project.scripts]
+gv-crm = "gv_crm.cli:main"
+
+[tool.setuptools]
+packages = ["gv_crm", "gv_crm.crm"]

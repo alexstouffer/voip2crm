@@ -1,0 +1,80 @@
+# Copy to config.yaml and fill in. Secrets can also come from environment
+# variables (recommended) — any value written as ${ENV_VAR} is resolved at load.
+
+gmail:
+  # Path to the OAuth "Desktop app" client secret you download from Google Cloud Console.
+  credentials_path: credentials.json
+  # Where the auth token gets cached after first login (created automatically).
+  token_path: token.json
+  # Gmail search query that selects Google Voice messages. The -label clause is
+  # what makes the pipeline stateless: processed messages get the label and drop
+  # out of future scans (works the same for polling and push).
+  query: "from:(voice-noreply@google.com) -label:gv-processed"
+  # Stateless dedupe: label applied after a message is processed. Leave null to
+  # fall back to the local SQLite state db instead (fine for a single long-lived box).
+  processed_label: gv-processed
+  # Only look at messages newer than this many days on each run.
+  lookback_days: 7
+
+whisperx:
+  model: large-v2          # tiny | base | small | medium | large-v2 | large-v3
+  device: cpu              # "cuda" if you have an NVIDIA GPU, else "cpu"
+  compute_type: int8       # "float16" for cuda, "int8" for cpu
+  batch_size: 16
+  language: null           # null = auto-detect, or e.g. "en"
+  diarize: false           # speaker labels (needs hf_token + pyannote access)
+  hf_token: ${HF_TOKEN}    # Hugging Face token, only needed if diarize: true
+  min_speakers: null
+  max_speakers: null
+
+extract:
+  # Rule-based follow-up detection always runs. The LLM pass is optional and,
+  # when enabled, produces a cleaner summary + structured follow-up fields.
+  use_llm: false
+  llm_provider: anthropic
+  anthropic_api_key: ${ANTHROPIC_API_KEY}
+  anthropic_model: claude-sonnet-4-6
+  # Phrases that flag a needed follow-up (case-insensitive substring match).
+  followup_keywords:
+    - call me back
+    - get back to me
+    - follow up
+    - send me
+    - send over
+    - quote
+    - estimate
+    - schedule
+    - reschedule
+    - let me know
+    - waiting to hear
+    - need an answer
+
+crm:
+  # "local"   -> SQLite + JSON, no external CRM (great for testing)
+  # "twenty"  -> self-hosted Twenty CRM via Core REST API
+  # "hubspot" -> HubSpot via a Private App token
+  provider: twenty
+  twenty:
+    # Self-hosted base URL. "/rest" is appended automatically if omitted.
+    base_url: https://crm.example.com/rest
+    api_key: ${TWENTY_API_KEY}
+    # Note/task body field. Recent Twenty uses "bodyV2" (rich text); older uses
+    # "body" (plain string). The adapter auto-retries the other shape on a 400,
+    # but set this to whatever your workspace playground shows to avoid the retry.
+    body_field: body
+    # Optional: default calling code stamped on new contacts' phone numbers.
+    default_calling_code: "+1"
+  hubspot:
+    access_token: ${HUBSPOT_TOKEN}
+
+alerts:
+  # A CRM follow-up task is always created when a follow-up is detected (via the
+  # adapter). These are extra, optional reminders:
+  followups_csv: followups.csv      # append every follow-up to this file (set null to skip)
+  email_self: false                 # email yourself a reminder via Gmail
+  email_to: you@example.com
+
+storage:
+  audio_dir: data/audio             # downloaded call audio lands here
+  transcript_dir: data/transcripts  # transcripts saved here
+  state_db: data/state.sqlite       # tracks processed messages (idempotency)

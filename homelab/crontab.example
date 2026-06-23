@@ -1,0 +1,12 @@
+# Google Voice -> Twenty: batch a few times a day, weekdays, business hours.
+# Install with:  crontab -e   (paste below, fix the path)
+#
+# CRON_TZ is honored by cronie (Fedora/RHEL) and Vixie cron (Debian/Ubuntu).
+# If your cron doesn't support it, set the host timezone to America/Los_Angeles
+# instead, or export TZ inside run_batch.sh.
+
+CRON_TZ=America/Los_Angeles
+
+# minute hour day month weekday(1-5 = Mon-Fri)
+# Runs 9am, 12pm, 3pm, 6pm Pacific on weekdays. Adjust the hour list to taste.
+0 9,12,15,18 * * 1-5 /home/youruser/gv_crm_pipeline/homelab/run_batch.sh

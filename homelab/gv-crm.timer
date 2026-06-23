@@ -1,0 +1,15 @@
+[Unit]
+Description=Run GV->Twenty a few times a day on weekdays
+
+[Timer]
+# 9am, 12pm, 3pm, 6pm Pacific, Mon-Fri.
+# The trailing timezone needs systemd >= 246; otherwise drop it and set the
+# host timezone with: sudo timedatectl set-timezone America/Los_Angeles
+OnCalendar=Mon-Fri 09,12,15,18:00 America/Los_Angeles
+# If the box was asleep/off at trigger time, run as soon as it's back.
+Persistent=true
+# Spread load slightly so it's not exactly on the minute.
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
