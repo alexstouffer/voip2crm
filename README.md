@@ -4,10 +4,11 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
 
-Turn **Google Voice voicemails into Twenty CRM notes** — automatically transcribed
-with [WhisperX](https://github.com/m-bain/whisperX), with follow-up tasks created
-when a call needs one. Designed to run as a scheduled batch job on a home lab, a
-few times a day.
+Turn **phone calls into Twenty CRM notes** — automatically transcribed with
+[WhisperX](https://github.com/m-bain/whisperX), with follow-up tasks created when
+a call needs one. Two ingestion sources: a **telephony webhook** (OpenPhone/Quo
+or Twilio) that captures inbound *and* outbound calls in real time, or **Google
+Voice voicemail emails** polled in batches. Built to run on a home lab.
 
 ---
 
@@ -21,7 +22,8 @@ few times a day.
 - [Usage](#usage)
 - [Follow-up detection](#follow-up-detection)
 - [CRM adapters](#crm-adapters)
-- [Scheduling on a home lab](#scheduling-on-a-home-lab)
+- [Capturing calls (webhook)](#capturing-calls-webhook)
+- [Scheduling the Gmail source on a home lab](#scheduling-the-gmail-source-on-a-home-lab)
 - [Deploying to AWS (optional)](#deploying-to-aws-optional)
 - [Project structure](#project-structure)
 - [Troubleshooting](#troubleshooting)
@@ -33,31 +35,41 @@ few times a day.
 
 ## How it works
 
+Ingestion is pluggable (`source:` in config). Both sources feed the same
+transcribe → extract → CRM back half.
+
+**Webhook source** (`source: webhook`) — captures real calls, inbound and outbound:
+
 ```
-Google Voice
-    │  (voicemail-to-email forwarding)
-    ▼
-  Gmail ──▶ poll ──▶ download audio ──▶ WhisperX ──▶ detect follow-ups ──▶ Twenty CRM
-                                                                              │
-                                                                    note + follow-up task
+Call ends → provider records it → webhook POST → receiver:
+   verify → download recording → WhisperX → detect follow-ups → Twenty CRM
 ```
 
-Google Voice has **no official API for call audio**, so the supported path is its
-built-in voicemail-to-email forwarding. Enable it in Google Voice under
-**Settings → Voicemail → \"Get voicemail via email.\"** Each run polls Gmail for
-those messages, downloads the audio attachment, transcribes it, extracts any
-follow-up, and writes the result to your CRM.
+Your provider (OpenPhone/Quo or Twilio) records each call and POSTs when the
+recording is ready; a small Flask receiver acks instantly and processes the call
+on a background worker. This is the path for capturing actual conversations. See
+[WEBHOOK.md](WEBHOOK.md).
 
-If a message carries only Google's own text transcript and no audio attachment,
-the pipeline falls back to that text automatically.
+**Gmail source** (`source: gmail`) — polls Google Voice voicemail/recording emails:
 
-**Idempotency is stateless.** Processed messages get a Gmail label
-(`gmail.processed_label`) and drop out of future scans, so the job is safe to run
-on any schedule without ever double-posting — no database required.
+```
+Google Voice → voicemail-to-email → Gmail → poll → download → WhisperX → Twenty CRM
+```
+
+Google Voice has no call API, so this path relies on its voicemail-to-email
+forwarding and is best for voicemails. Processed messages get a Gmail label and
+drop out of future scans, so batched polling never double-posts.
+
+> Why not Google Voice for live calls? It only exposes automatic call recordings
+> through Vault eDiscovery exports (Premier + a Vault-capable Workspace edition,
+> ~$57/user/mo). A telephony provider webhook is cheaper and simpler — hence the
+> webhook source above.
 
 ## Features
 
-- Gmail ingestion with OAuth, attachment download, and label-based dedupe
+- Two ingestion sources: telephony **webhook** (OpenPhone/Quo, Twilio) for live
+  inbound/outbound call capture, or **Gmail** polling for Google Voice voicemails
+- Webhook receiver acks fast and processes on a background worker (single-GPU friendly)
 - WhisperX transcription with optional word-alignment and speaker diarization
 - Follow-up detection: fast keyword/date rules, plus an optional LLM pass for
   cleaner summaries and structured fields
@@ -71,12 +83,13 @@ on any schedule without ever double-posting — no database required.
 ## Requirements
 
 - Linux, Python 3.10+
-- A Google account receiving Google Voice voicemail emails
-- A Google Cloud project with the **Gmail API** enabled and a **Desktop app**
-  OAuth client
 - [WhisperX](https://github.com/m-bain/whisperX) (installed separately; a GPU is
   optional but much faster)
 - A reachable **Twenty CRM** instance and an API key (or use another adapter)
+- For the **webhook source**: an OpenPhone/Quo (or Twilio) account with call
+  recording on, and a public HTTPS URL to your box (e.g. a free Cloudflare Tunnel)
+- For the **Gmail source**: a Google Cloud project with the Gmail API enabled and
+  a Desktop-app OAuth client
 
 ## Installation
 
@@ -145,6 +158,13 @@ python run.py --watch --interval 300             # poll every 5 min (dev only)
 Equivalent `make` targets: `make setup`, `make dry`, `make run`, `make watch`.
 After `pip install -e .`, the same launcher is available as the `gv-crm` command.
 
+For the **webhook source**, run the receiver instead of `run.py`:
+
+```bash
+python serve.py --config config.yaml -v   # listens on :8080; POST provider events here
+curl localhost:8080/healthz
+```
+
 ## Follow-up detection
 
 Rule-based detection always runs: it matches `extract.followup_keywords` and
@@ -170,11 +190,24 @@ To add a CRM, copy `local.py`, implement the three methods, and register it in
 `noteTargets` / `taskTargets` join objects and auto-adapts to the `body` vs
 `bodyV2` field difference between versions.
 
-## Scheduling on a home lab
+## Capturing calls (webhook)
 
-Run a few batched sweeps a day with a **systemd timer** (recommended — catches up
-missed runs) or **cron**. Units and a locking batch wrapper are in `homelab/`.
-Full instructions: **[HOMELAB.md](HOMELAB.md)**.
+For real inbound/outbound calls, set `source: webhook`, pick a provider
+(OpenPhone/Quo recommended, or Twilio), and run the receiver as a service. The
+provider needs a public HTTPS URL — a free Cloudflare Tunnel to your home lab
+works well, no open ports. Full setup, provider steps, and exposure options are
+in **[WEBHOOK.md](WEBHOOK.md)**.
+
+```bash
+sudo cp homelab/gv-crm-webhook.service /etc/systemd/system/   # edit user/paths
+sudo systemctl daemon-reload && sudo systemctl enable --now gv-crm-webhook
+```
+
+## Scheduling the Gmail source on a home lab
+
+If you use the Gmail source, run a few batched sweeps a day with a **systemd
+timer** (recommended — catches up missed runs) or **cron**. Units and a locking
+batch wrapper are in `homelab/`. Full instructions: **[HOMELAB.md](HOMELAB.md)**.
 
 ```bash
 sudo cp homelab/gv-crm.{service,timer} /etc/systemd/system/   # edit paths/user first
@@ -190,15 +223,17 @@ and a Dockerfile are in **[AWS_DEPLOY.md](AWS_DEPLOY.md)** and `aws/`.
 ## Project structure
 
 ```
-run.py                 launcher (same as the installed `gv-crm` command)
+run.py                 batch launcher (gmail source; the `gv-crm` command)
+serve.py               webhook receiver launcher (`gv-crm-webhook` command)
 setup.sh               one-time bootstrap
 Makefile               setup / dry / run / watch targets
 config.example.yaml    copy to config.yaml
 .env.example           copy to .env
 gv_crm/
   cli.py               argument parsing / entry point
-  pipeline.py          orchestration
+  pipeline.py          orchestration (shared process_record back half)
   gmail_source.py      Gmail auth, search, audio download, labels, watch
+  webhook/             telephony receiver: server + openphone / twilio adapters
   transcribe.py        WhisperX wrapper
   extract.py           follow-up detection (rules + optional LLM)
   alerts.py            CSV log + optional self-email

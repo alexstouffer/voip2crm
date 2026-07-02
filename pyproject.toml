@@ -26,6 +26,7 @@ transcribe = ["whisperx"]
 
 [project.scripts]
 gv-crm = "gv_crm.cli:main"
+gv-crm-webhook = "gv_crm.webhook.server:main"
 
 [tool.setuptools]
-packages = ["gv_crm", "gv_crm.crm"]
+packages = ["gv_crm", "gv_crm.crm", "gv_crm.webhook"]

@@ -1,0 +1,17 @@
+[Unit]
+Description=gv-crm telephony webhook receiver (calls -> Twenty CRM)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Edit User and paths to match your home lab.
+User=youruser
+WorkingDirectory=/home/youruser/gv-crm-pipeline
+ExecStart=/home/youruser/gv-crm-pipeline/.venv/bin/python serve.py --config config.yaml
+Restart=on-failure
+RestartSec=5
+# Give WhisperX room; the request is acked immediately and work runs off-thread.
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

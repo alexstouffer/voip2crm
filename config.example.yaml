@@ -1,6 +1,30 @@
 # Copy to config.yaml and fill in. Secrets can also come from environment
 # variables (recommended) — any value written as ${ENV_VAR} is resolved at load.
 
+# Ingestion source: "webhook" (telephony provider posts recordings, real-time)
+# or "gmail" (poll Google Voice voicemail/recording emails, batched).
+source: webhook
+
+# --- webhook source (used when source: webhook) ---------------------------
+webhook:
+  provider: openphone        # openphone | twilio
+  host: 0.0.0.0
+  port: 8080
+  path: /webhook
+  # Simple, reliable auth: the provider must hit .../webhook?token=<this>.
+  shared_token: ${WEBHOOK_TOKEN}
+  # Signature verification is defense-in-depth. Turn on once you've confirmed the
+  # provider's signing format against a real event (see the adapter docstrings).
+  verify_signatures: false
+  openphone:
+    # Signing secret shown when you create the call.recording.completed webhook.
+    signing_secret: ${OPENPHONE_SIGNING_SECRET}
+  twilio:
+    account_sid: ${TWILIO_ACCOUNT_SID}
+    auth_token: ${TWILIO_AUTH_TOKEN}
+    # Set to your public tunnel URL so signature validation matches Twilio's URL.
+    public_url: null
+
 gmail:
   # Path to the OAuth "Desktop app" client secret you download from Google Cloud Console.
   credentials_path: credentials.json
