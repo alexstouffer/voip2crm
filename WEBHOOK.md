@@ -80,9 +80,9 @@ curl localhost:8080/healthz
 Install as a service:
 
 ```bash
-sudo cp homelab/gv-crm-webhook.service /etc/systemd/system/   # edit user/paths
-sudo systemctl daemon-reload && sudo systemctl enable --now gv-crm-webhook
-journalctl -u gv-crm-webhook -f
+sudo cp homelab/voip2crm-webhook.service /etc/systemd/system/   # edit user/paths
+sudo systemctl daemon-reload && sudo systemctl enable --now voip2crm-webhook
+journalctl -u voip2crm-webhook -f
 ```
 
 The receiver acks each webhook immediately (providers retry if you take more than
@@ -92,7 +92,7 @@ the call id in the state db.
 
 For a multi-process setup, run under gunicorn with a single worker so the queue
 and dedupe stay coherent:
-`gunicorn -w 1 -b 0.0.0.0:8080 'gv_crm.webhook.server:create_app(...)'` — or just
+`gunicorn -w 1 -b 0.0.0.0:8080 'voip2crm.webhook.server:create_app(...)'` — or just
 keep the single-process `serve.py`, which is plenty for call volumes here.
 
 ## Provider transcripts (optional)

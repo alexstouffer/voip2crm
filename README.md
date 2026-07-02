@@ -1,4 +1,4 @@
-# gv-crm-pipeline
+# voip2crm
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -94,8 +94,8 @@ drop out of future scans, so batched polling never double-posts.
 ## Installation
 
 ```bash
-git clone <your-remote> gv-crm-pipeline
-cd gv-crm-pipeline
+git clone <your-remote> voip2crm
+cd voip2crm
 ./setup.sh          # creates .venv, installs deps, scaffolds config.yaml and .env
 ```
 
@@ -156,7 +156,7 @@ python run.py --watch --interval 300             # poll every 5 min (dev only)
 ```
 
 Equivalent `make` targets: `make setup`, `make dry`, `make run`, `make watch`.
-After `pip install -e .`, the same launcher is available as the `gv-crm` command.
+After `pip install -e .`, the same launcher is available as the `voip2crm` command.
 
 For the **webhook source**, run the receiver instead of `run.py`:
 
@@ -176,7 +176,7 @@ the rule-based result as a fallback.
 ## CRM adapters
 
 Set `crm.provider` to `twenty` (default), `hubspot`, or `local`. Adapters live in
-`gv_crm/crm/` and implement three methods:
+`voip2crm/crm/` and implement three methods:
 
 ```python
 class CRMAdapter:
@@ -199,8 +199,8 @@ works well, no open ports. Full setup, provider steps, and exposure options are
 in **[WEBHOOK.md](WEBHOOK.md)**.
 
 ```bash
-sudo cp homelab/gv-crm-webhook.service /etc/systemd/system/   # edit user/paths
-sudo systemctl daemon-reload && sudo systemctl enable --now gv-crm-webhook
+sudo cp homelab/voip2crm-webhook.service /etc/systemd/system/   # edit user/paths
+sudo systemctl daemon-reload && sudo systemctl enable --now voip2crm-webhook
 ```
 
 ## Scheduling the Gmail source on a home lab
@@ -210,8 +210,8 @@ timer** (recommended — catches up missed runs) or **cron**. Units and a lockin
 batch wrapper are in `homelab/`. Full instructions: **[HOMELAB.md](HOMELAB.md)**.
 
 ```bash
-sudo cp homelab/gv-crm.{service,timer} /etc/systemd/system/   # edit paths/user first
-sudo systemctl daemon-reload && sudo systemctl enable --now gv-crm.timer
+sudo cp homelab/voip2crm.{service,timer} /etc/systemd/system/   # edit paths/user first
+sudo systemctl daemon-reload && sudo systemctl enable --now voip2crm.timer
 ```
 
 ## Deploying to AWS (optional)
@@ -223,13 +223,13 @@ and a Dockerfile are in **[AWS_DEPLOY.md](AWS_DEPLOY.md)** and `aws/`.
 ## Project structure
 
 ```
-run.py                 batch launcher (gmail source; the `gv-crm` command)
-serve.py               webhook receiver launcher (`gv-crm-webhook` command)
+run.py                 batch launcher (gmail source; the `voip2crm` command)
+serve.py               webhook receiver launcher (`voip2crm-webhook` command)
 setup.sh               one-time bootstrap
 Makefile               setup / dry / run / watch targets
 config.example.yaml    copy to config.yaml
 .env.example           copy to .env
-gv_crm/
+voip2crm/
   cli.py               argument parsing / entry point
   pipeline.py          orchestration (shared process_record back half)
   gmail_source.py      Gmail auth, search, audio download, labels, watch

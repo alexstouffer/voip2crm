@@ -9,4 +9,4 @@ CRON_TZ=America/Los_Angeles
 
 # minute hour day month weekday(1-5 = Mon-Fri)
 # Runs 9am, 12pm, 3pm, 6pm Pacific on weekdays. Adjust the hour list to taste.
-0 9,12,15,18 * * 1-5 /home/youruser/gv_crm_pipeline/homelab/run_batch.sh
+0 9,12,15,18 * * 1-5 /home/youruser/voip2crm_pipeline/homelab/run_batch.sh

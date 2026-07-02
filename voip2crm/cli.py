@@ -16,8 +16,8 @@ import logging
 import sys
 import time
 
-from gv_crm.config import Config
-from gv_crm.pipeline import Pipeline
+from voip2crm.config import Config
+from voip2crm.pipeline import Pipeline
 
 
 def main() -> int:
@@ -46,7 +46,7 @@ def main() -> int:
         if args.once:
             pipe.run_once(limit=args.limit, reprocess=args.reprocess)
         else:
-            logging.getLogger("gv_crm").info("Watching; Ctrl-C to stop.")
+            logging.getLogger("voip2crm").info("Watching; Ctrl-C to stop.")
             while True:
                 pipe.run_once(limit=args.limit, reprocess=args.reprocess)
                 time.sleep(max(30, args.interval))

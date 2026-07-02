@@ -33,7 +33,7 @@ import requests
 
 from .base import InboundCall, ProviderAdapter
 
-log = logging.getLogger("gv_crm.webhook.openphone")
+log = logging.getLogger("voip2crm.webhook.openphone")
 
 _RECORDING_EVENT = "call.recording.completed"
 

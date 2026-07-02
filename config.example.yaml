@@ -33,10 +33,10 @@ gmail:
   # Gmail search query that selects Google Voice messages. The -label clause is
   # what makes the pipeline stateless: processed messages get the label and drop
   # out of future scans (works the same for polling and push).
-  query: "from:(voice-noreply@google.com) -label:gv-processed"
+  query: "from:(voice-noreply@google.com) -label:voip2crm-processed"
   # Stateless dedupe: label applied after a message is processed. Leave null to
   # fall back to the local SQLite state db instead (fine for a single long-lived box).
-  processed_label: gv-processed
+  processed_label: voip2crm-processed
   # Only look at messages newer than this many days on each run.
   lookback_days: 7
 

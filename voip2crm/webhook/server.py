@@ -23,7 +23,7 @@ from ..models import CallRecord
 from ..pipeline import Pipeline
 from .base import InboundCall, ProviderAdapter, build_provider
 
-log = logging.getLogger("gv_crm.webhook")
+log = logging.getLogger("voip2crm.webhook")
 
 
 def _to_record(provider: ProviderAdapter, pipeline: Pipeline, call: InboundCall) -> Optional[CallRecord]:
@@ -95,7 +95,7 @@ def create_app(pipeline: Pipeline, webhook_cfg: dict) -> Flask:
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="gv-crm telephony webhook receiver")
+    p = argparse.ArgumentParser(description="voip2crm telephony webhook receiver")
     p.add_argument("--config", default="config.yaml")
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)

@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $Log = Join-Path $LogDir ("batch-{0}.log" -f (Get-Date -Format "yyyyMMdd"))
 
 # Single-instance guard via a named mutex.
-$mutex = New-Object System.Threading.Mutex($false, "Global\gv-crm-batch")
+$mutex = New-Object System.Threading.Mutex($false, "Global\voip2crm-batch")
 if (-not $mutex.WaitOne(0)) {
     Add-Content $Log "$(Get-Date -Format o) another run is active; skipping"
     exit 0

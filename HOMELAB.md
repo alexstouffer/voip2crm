@@ -16,7 +16,7 @@ weekend fine).
 ## One-time setup
 
 ```bash
-cd /home/youruser/gv_crm_pipeline
+cd /home/youruser/voip2crm_pipeline
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt        # WhisperX already installed on this box
 cp config.example.yaml config.yaml     # fill in Twenty base_url + TWENTY_API_KEY
@@ -40,13 +40,13 @@ whisperx:
 run if the box was off at trigger time, and logs land in journald.
 
 ```bash
-sudo cp homelab/gv-crm.service /etc/systemd/system/
-sudo cp homelab/gv-crm.timer   /etc/systemd/system/
+sudo cp homelab/voip2crm.service /etc/systemd/system/
+sudo cp homelab/voip2crm.timer   /etc/systemd/system/
 # edit User= and the paths in both files first
 sudo systemctl daemon-reload
-sudo systemctl enable --now gv-crm.timer
-systemctl list-timers gv-crm.timer        # confirm next run
-journalctl -u gv-crm.service -f           # watch a run
+sudo systemctl enable --now voip2crm.timer
+systemctl list-timers voip2crm.timer        # confirm next run
+journalctl -u voip2crm.service -f           # watch a run
 ```
 
 **cron (simplest).**
@@ -62,7 +62,7 @@ inline `America/Los_Angeles`; otherwise set the host timezone).
 
 **Windows lab.** Use `homelab/run_batch.ps1` with Task Scheduler. Easiest is the
 GUI: create a task, action = `powershell.exe -ExecutionPolicy Bypass -File
-C:\path\gv_crm_pipeline\homelab\run_batch.ps1`, then add four daily triggers
+C:\path\voip2crm_pipeline\homelab\run_batch.ps1`, then add four daily triggers
 (9/12/15/18) restricted to weekdays. Or one trigger to start, duplicated.
 
 ## What runs each time

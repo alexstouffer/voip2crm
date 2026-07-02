@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=oneshot
 # Edit User and paths to match your home lab.
 User=youruser
-WorkingDirectory=/home/youruser/gv_crm_pipeline
-ExecStart=/home/youruser/gv_crm_pipeline/homelab/run_batch.sh
+WorkingDirectory=/home/youruser/voip2crm_pipeline
+ExecStart=/home/youruser/voip2crm_pipeline/homelab/run_batch.sh
 # Don't let a stuck WhisperX run hang forever.
 TimeoutStartSec=1800

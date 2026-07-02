@@ -5,14 +5,14 @@
 # batch with several long recordings runs past the next trigger.
 set -uo pipefail
 
-# Project root = parent of this homelab/ dir (override with GV_CRM_HOME).
-APP_DIR="${GV_CRM_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# Project root = parent of this homelab/ dir (override with VOIP2CRM_HOME).
+APP_DIR="${VOIP2CRM_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$APP_DIR"
 
-VENV="${GV_CRM_VENV:-$APP_DIR/.venv}"
+VENV="${VOIP2CRM_VENV:-$APP_DIR/.venv}"
 BATCH_LIMIT="${BATCH_LIMIT:-50}"          # max voicemails handled per run
-LOCK="${GV_CRM_LOCK:-/tmp/gv-crm.lock}"
-LOG_DIR="${GV_CRM_LOG_DIR:-$APP_DIR/data/logs}"
+LOCK="${VOIP2CRM_LOCK:-/tmp/voip2crm.lock}"
+LOG_DIR="${VOIP2CRM_LOG_DIR:-$APP_DIR/data/logs}"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/batch-$(date +%Y%m%d).log"
 

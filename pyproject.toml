@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gv-crm-pipeline"
+name = "voip2crm"
 version = "0.1.0"
 description = "Google Voice voicemails -> WhisperX -> Twenty CRM, with follow-up detection."
 readme = "README.md"
@@ -25,8 +25,8 @@ dependencies = [
 transcribe = ["whisperx"]
 
 [project.scripts]
-gv-crm = "gv_crm.cli:main"
-gv-crm-webhook = "gv_crm.webhook.server:main"
+voip2crm = "voip2crm.cli:main"
+voip2crm-webhook = "voip2crm.webhook.server:main"
 
 [tool.setuptools]
-packages = ["gv_crm", "gv_crm.crm", "gv_crm.webhook"]
+packages = ["voip2crm", "voip2crm.crm", "voip2crm.webhook"]

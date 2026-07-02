@@ -23,7 +23,7 @@ import os
 from pathlib import Path
 
 logging.getLogger().setLevel(logging.INFO)
-log = logging.getLogger("gv_crm.aws")
+log = logging.getLogger("voip2crm.aws")
 
 _PIPELINE = None  # reused across warm invocations
 
@@ -44,8 +44,8 @@ def _hydrate_token() -> None:
 def _get_pipeline():
     global _PIPELINE
     if _PIPELINE is None:
-        from gv_crm.config import Config
-        from gv_crm.pipeline import Pipeline
+        from voip2crm.config import Config
+        from voip2crm.pipeline import Pipeline
 
         _hydrate_token()
         cfg = Config.load(os.environ.get("CONFIG_PATH", "config.yaml"))

@@ -22,7 +22,7 @@ ENV WHISPER_MODEL=small
 RUN python -c "import whisperx; whisperx.load_model('${WHISPER_MODEL}', 'cpu', compute_type='int8')"
 
 # App code.
-COPY gv_crm ${LAMBDA_TASK_ROOT}/gv_crm
+COPY voip2crm ${LAMBDA_TASK_ROOT}/voip2crm
 COPY aws/lambda_handler.py ${LAMBDA_TASK_ROOT}/
 COPY config.yaml ${LAMBDA_TASK_ROOT}/
 

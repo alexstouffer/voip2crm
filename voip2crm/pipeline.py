@@ -19,7 +19,7 @@ from .models import CallRecord
 from .state import State
 from .transcribe import Transcriber
 
-log = logging.getLogger("gv_crm")
+log = logging.getLogger("voip2crm")
 
 
 class Pipeline:

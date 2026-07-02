@@ -33,7 +33,7 @@ Cheapest-of-all if you don't actually need it on AWS: run `python run.py --watch
 
 ```bash
 cp config.example.yaml config.yaml   # fill in Twenty + Gmail settings
-aws ecr create-repository --repository-name gv-crm
+aws ecr create-repository --repository-name voip2crm
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 REGION=$(aws configure get region)
 aws ecr get-login-password --region $REGION | \
@@ -41,7 +41,7 @@ aws ecr get-login-password --region $REGION | \
 
 # Build for arm64 (Graviton) and push.
 docker buildx build --platform linux/arm64 -f aws/Dockerfile \
-  -t $ACCOUNT.dkr.ecr.$REGION.amazonaws.com/gv-crm:latest --push .
+  -t $ACCOUNT.dkr.ecr.$REGION.amazonaws.com/voip2crm:latest --push .
 ```
 
 ## Secrets (cheap): SSM, not Secrets Manager
@@ -50,12 +50,12 @@ Standard SSM parameters are free; Secrets Manager is ~$0.40/secret/mo. Store the
 Gmail token (do the first OAuth locally to generate `token.json`, then upload it):
 
 ```bash
-aws ssm put-parameter --name /gv-crm/gmail-token --type SecureString \
+aws ssm put-parameter --name /voip2crm/gmail-token --type SecureString \
   --value file://token.json
-aws ssm put-parameter --name /gv-crm/twenty-api-key --type SecureString --value "<key>"
+aws ssm put-parameter --name /voip2crm/twenty-api-key --type SecureString --value "<key>"
 ```
 
-Set the worker Lambda env: `GMAIL_TOKEN_SSM=/gv-crm/gmail-token`,
+Set the worker Lambda env: `GMAIL_TOKEN_SSM=/voip2crm/gmail-token`,
 `GMAIL_TOKEN_PATH=/tmp/token.json`, `TWENTY_API_KEY` (or read it from SSM too),
 `CONFIG_PATH=config.yaml`. In `config.yaml` point `gmail.token_path` at
 `/tmp/token.json`. Give the Lambda role `ssm:GetParameter` + `kms:Decrypt`.

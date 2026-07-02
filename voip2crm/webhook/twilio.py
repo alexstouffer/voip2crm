@@ -24,7 +24,7 @@ import requests
 
 from .base import InboundCall, ProviderAdapter
 
-log = logging.getLogger("gv_crm.webhook.twilio")
+log = logging.getLogger("voip2crm.webhook.twilio")
 
 
 class TwilioAdapter(ProviderAdapter):
