@@ -95,6 +95,42 @@ and dedupe stay coherent:
 `gunicorn -w 1 -b 0.0.0.0:8080 'voip2crm.webhook.server:create_app(...)'` — or just
 keep the single-process `serve.py`, which is plenty for call volumes here.
 
+## Install WhisperX (on the box that runs the receiver)
+
+WhisperX must live wherever the receiver runs — the recording is downloaded and
+transcribed there. Install it into the repo venv:
+
+```bash
+./homelab/install_whisperx.sh
+```
+
+It auto-detects an NVIDIA GPU: with one it installs the CUDA build (device
+`cuda`, `float16`); without one it installs CPU-only (device `cpu`, `int8`) —
+the simplest, most reliable route and fine to start with, since call audio is
+short and calls are processed one at a time. Update `whisperx:` in `config.yaml`
+with the device/compute_type/model it prints.
+
+## First light (bring it up in stages)
+
+Isolate the four things that can fail — tunnel, token, payload parsing, and the
+transcribe→CRM tail — by proving one at a time:
+
+1. **Plumbing, no ML, no external CRM.** Set `crm.provider: local`, then:
+   ```bash
+   python serve.py --no-transcribe -v          # skip WhisperX for now
+   ./homelab/test_webhook.sh                    # posts a synthetic recording event
+   ```
+   A row should land in `data/crm_local.sqlite`. This proves the receiver, parsing,
+   download, queue/worker, and a CRM write.
+2. **Point at Twenty** (`crm.provider: twenty`) and re-run the test. This surfaces
+   the Twenty `body_field` question in isolation, before any networking.
+3. **Turn WhisperX on** (drop `--no-transcribe`) and re-run — now the real
+   transcription path is exercised locally.
+4. **Add the tunnel**, then `curl https://<host>/healthz` from your phone on
+   cellular. If that returns, external reachability + HTTPS + token are good.
+5. **Register the webhook in OpenPhone and make one real call** — the only piece
+   you can't fake.
+
 ## Provider transcripts (optional)
 
 OpenPhone can also emit `call.transcript.completed`. If you'd rather skip

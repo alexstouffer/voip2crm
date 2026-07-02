@@ -97,6 +97,8 @@ def create_app(pipeline: Pipeline, webhook_cfg: dict) -> Flask:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="voip2crm telephony webhook receiver")
     p.add_argument("--config", default="config.yaml")
+    p.add_argument("--no-transcribe", action="store_true",
+                   help="skip WhisperX (validate the plumbing before WhisperX is ready)")
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)
 
@@ -107,7 +109,7 @@ def main(argv=None) -> int:
     )
 
     cfg = Config.load(args.config)
-    pipeline = Pipeline(cfg)
+    pipeline = Pipeline(cfg, skip_transcribe=args.no_transcribe)
     wcfg = cfg.section("webhook")
     app = create_app(pipeline, wcfg)
     host = wcfg.get("host", "0.0.0.0")

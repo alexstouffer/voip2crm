@@ -1,0 +1,17 @@
+{
+  "id": "EVtest0001",
+  "object": "event",
+  "apiVersion": "v4",
+  "type": "call.recording.completed",
+  "data": {
+    "object": {
+      "id": "ACtest0001",
+      "object": "call",
+      "from": "+13105550199",
+      "to": "+14155550100",
+      "direction": "outgoing",
+      "media": [{ "url": "__AUDIO_URL__" }],
+      "answeredAt": "2026-07-02T17:00:00.000Z"
+    }
+  }
+}
