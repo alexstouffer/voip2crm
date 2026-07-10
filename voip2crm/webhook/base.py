@@ -16,7 +16,7 @@ from typing import Optional
 @dataclass
 class InboundCall:
     call_id: str                        # provider call id (dedupe key)
-    direction: str                      # "incoming" | "outgoing"
+    direction: str                      # "incoming" | "outgoing" | "unknown"
     from_number: str = ""
     to_number: str = ""
     started_at: Optional[datetime] = None
@@ -24,9 +24,17 @@ class InboundCall:
     # Optional auth for fetching the recording (Twilio needs basic auth).
     download_auth: Optional[tuple] = None
     download_headers: dict = field(default_factory=dict)
+    # Provider-supplied transcript (Quo AI). When set, no audio download or
+    # WhisperX is needed — the pipeline uses this text directly.
+    transcript: Optional[str] = None
+    # Explicit external-party number (used when direction is unknown, e.g. from
+    # a transcript event where we resolve the counterparty ourselves).
+    party_number: Optional[str] = None
 
     def counterparty(self) -> str:
         """The external party's number — the caller on inbound, callee on outbound."""
+        if self.party_number:
+            return self.party_number
         return self.from_number if self.direction.startswith("in") else self.to_number
 
 

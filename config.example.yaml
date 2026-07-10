@@ -17,8 +17,15 @@ webhook:
   # provider's signing format against a real event (see the adapter docstrings).
   verify_signatures: false
   openphone:
-    # Signing secret shown when you create the call.recording.completed webhook.
+    # Signing secret shown when you create the webhook ("Reveal Signing Secret").
     signing_secret: ${OPENPHONE_SIGNING_SECRET}
+    # Subscribe to ONE Quo event:
+    #   call.transcript.completed -> uses Quo AI transcript, no WhisperX (Business plan)
+    #   call.recording.completed  -> downloads audio, WhisperX transcribes it
+    # For the transcript event, list your own Quo number(s) (E.164) so the other
+    # party is picked as the CRM contact and speakers are labeled Agent/Caller.
+    my_numbers:
+      - "+13105550199"
   twilio:
     account_sid: ${TWILIO_ACCOUNT_SID}
     auth_token: ${TWILIO_AUTH_TOKEN}

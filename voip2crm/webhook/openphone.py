@@ -1,31 +1,32 @@
 """OpenPhone / Quo webhook adapter.
 
-Subscribe to the `call.recording.completed` event (create the webhook in the
-OpenPhone app under Settings -> Integrations -> Webhooks, or via the API at
-https://api.openphone.com/v1/webhooks/calls). The payload puts the recording
-URL in data.object.media[].url. Example (trimmed):
+Handles two event types — subscribe to whichever fits your setup:
 
-  {"type": "call.recording.completed",
-   "data": {"object": {"id": "AC...", "from": "+1...", "to": "+1...",
-                        "direction": "incoming",
-                        "media": [{"url": "https://storage.googleapis.com/..."}],
-                        "answeredAt": "2022-01-24T19:28:42.000Z"}}}
+  call.recording.completed  -> downloads the recording; WhisperX transcribes it.
+  call.transcript.completed -> uses Quo's AI transcript from the payload; no
+                               recording download and no WhisperX needed.
 
-Signature: OpenPhone signs with an `openphone-signature` header of the form
-`hmac;1;<timestampMs>;<base64sig>`, where sig = HMAC-SHA256 over
-`<timestampMs>.<rawBody>` keyed by the base64-decoded signing secret shown when
-you create the webhook. Confirm the exact format against your webhook before
-enabling verify_signatures — the shared ?token= check works regardless.
+Pick ONE per call to avoid double-processing (both map to the same call id, so
+whichever event arrives first wins the dedupe). For the no-WhisperX setup,
+subscribe to call.transcript.completed only (Quo Business plan or higher).
+
+The transcript payload carries a `dialogue` array of speaker turns but not a
+from/to; each turn has the speaker's number in `identifier`. We resolve the
+external party by removing your own Quo number(s) — set webhook.openphone.
+my_numbers — and treat the remaining number as the CRM contact.
+
+Signature (confirmed against Quo docs): header `openphone-signature` =
+`hmac;1;<timestampMs>;<base64sig>`, sig = HMAC-SHA256 over `<timestampMs>.<rawBody>`
+keyed by the base64-decoded signing secret ("Reveal Signing Secret" in Quo).
 """
 from __future__ import annotations
 
 import base64
 import hashlib
 import hmac
-import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -35,19 +36,18 @@ from .base import InboundCall, ProviderAdapter
 
 log = logging.getLogger("voip2crm.webhook.openphone")
 
-_RECORDING_EVENT = "call.recording.completed"
-
 
 class OpenPhoneAdapter(ProviderAdapter):
     def __init__(self, cfg: dict):
         self.signing_secret = cfg.get("signing_secret") or None
+        self.my_numbers = {_norm(n) for n in (cfg.get("my_numbers") or []) if n}
 
     def verify(self, request) -> bool:
         if not self.signing_secret:
             return True  # no secret configured; rely on the shared ?token= check
         header = request.headers.get("openphone-signature", "")
         try:
-            scheme, version, ts, sig = header.split(";")
+            _scheme, _version, ts, sig = header.split(";")
             key = base64.b64decode(self.signing_secret)
             msg = f"{ts}.".encode() + request.get_data()
             expected = base64.b64encode(hmac.new(key, msg, hashlib.sha256).digest()).decode()
@@ -58,9 +58,18 @@ class OpenPhoneAdapter(ProviderAdapter):
 
     def parse(self, request) -> Optional[InboundCall]:
         payload = request.get_json(force=True, silent=True) or {}
-        if payload.get("type") != _RECORDING_EVENT:
-            return None
+        etype = payload.get("type") or ""
         obj = (payload.get("data") or {}).get("object") or {}
+
+        if etype == "call.recording.completed":
+            return self._parse_recording(payload, obj)
+        if etype == "call.transcript.completed" or obj.get("object") == "callTranscript":
+            return self._parse_transcript(obj)
+        return None  # not an event we act on
+
+    # --- recording event (WhisperX path) -----------------------------------
+
+    def _parse_recording(self, payload: dict, obj: dict) -> Optional[InboundCall]:
         media = obj.get("media") or []
         url = next((m.get("url") for m in media if m.get("url")), None)
         if not url:
@@ -74,6 +83,47 @@ class OpenPhoneAdapter(ProviderAdapter):
             started_at=_parse_ts(obj.get("answeredAt") or obj.get("createdAt")),
             recording_url=url,
         )
+
+    # --- transcript event (no WhisperX) ------------------------------------
+
+    def _parse_transcript(self, obj: dict) -> Optional[InboundCall]:
+        dialogue = obj.get("dialogue") or []
+        if not dialogue:
+            log.warning("transcript event with empty dialogue: %s", obj.get("callId"))
+            return None
+        return InboundCall(
+            call_id=obj.get("callId"),
+            direction="unknown",
+            party_number=self._counterparty(dialogue),
+            started_at=_parse_ts(obj.get("createdAt")),
+            transcript=self._render_dialogue(dialogue),
+        )
+
+    def _render_dialogue(self, dialogue: list) -> str:
+        lines = []
+        for turn in sorted(dialogue, key=lambda d: d.get("start", 0) or 0):
+            content = (turn.get("content") or "").strip()
+            if not content:
+                continue
+            who = "Agent" if _norm(turn.get("identifier") or "") in self.my_numbers else "Caller"
+            lines.append(f"{who}: {content}")
+        return "\n".join(lines)
+
+    def _counterparty(self, dialogue: list) -> Optional[str]:
+        seen: list[str] = []  # original formatting, de-duped
+        for turn in dialogue:
+            ident = turn.get("identifier") or ""
+            if ident and ident not in seen:
+                seen.append(ident)
+        external = [n for n in seen if _norm(n) not in self.my_numbers]
+        if external:
+            return external[0]
+        if seen and not self.my_numbers:
+            log.warning("set webhook.openphone.my_numbers to identify the caller reliably")
+            return seen[0]
+        return None
+
+    # --- recording download (recording path only) --------------------------
 
     def download(self, call: InboundCall, dest_dir: Path) -> Optional[str]:
         r = requests.get(call.recording_url, timeout=60)
@@ -102,6 +152,10 @@ def _ext_from_content_type(ct: str) -> Optional[str]:
     if "mp4" in ct or "m4a" in ct:
         return "m4a"
     return None
+
+
+def _norm(s: str) -> str:
+    return re.sub(r"[^\d+]", "", s or "")
 
 
 def _safe(s: str) -> str:

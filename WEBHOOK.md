@@ -131,11 +131,31 @@ transcribe→CRM tail — by proving one at a time:
 5. **Register the webhook in OpenPhone and make one real call** — the only piece
    you can't fake.
 
-## Provider transcripts (optional)
+## Using Quo's AI transcripts (skip WhisperX)
 
-OpenPhone can also emit `call.transcript.completed`. If you'd rather skip
-WhisperX and use the provider's transcript, that's a small adapter change — say
-the word. Default here is WhisperX so the transcript stays on your hardware.
+If you're on Quo Business or higher, Quo transcribes calls for you and sends the
+full transcript in the `call.transcript.completed` webhook — so you can drop
+WhisperX, ffmpeg, and the GPU entirely. Subscribe to that event instead of
+`call.recording.completed`, and set your own Quo number(s) under
+`webhook.openphone.my_numbers` so the receiver picks the other party as the CRM
+contact and labels speakers Agent vs Caller.
+
+Subscribe to **one** event per call (both resolve to the same call id, so mixing
+them just means whichever lands first wins the dedupe):
+
+- `call.transcript.completed` — Quo AI transcript, no WhisperX. Simplest.
+- `call.recording.completed` — downloads audio, WhisperX transcribes on your box.
+  Gives you speaker diarization, word timestamps, full offline control, and the
+  raw recording — at the cost of running (and maybe GPU-accelerating) WhisperX.
+
+With the transcript event you can skip `./homelab/install_whisperx.sh` completely.
+Test it without a real call:
+
+```bash
+python serve.py -v      # no --no-transcribe needed; there's nothing to transcribe
+curl -X POST "http://localhost:8080/webhook?token=$WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" -d @examples/openphone_transcript.json
+```
 
 ## Consent
 

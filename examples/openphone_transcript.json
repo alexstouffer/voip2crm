@@ -1,0 +1,21 @@
+{
+  "id": "EVtesttrans01",
+  "object": "event",
+  "apiVersion": "v4",
+  "type": "call.transcript.completed",
+  "data": {
+    "object": {
+      "object": "callTranscript",
+      "callId": "ACtest0001",
+      "createdAt": "2026-07-02T17:05:00.000Z",
+      "dialogue": [
+        { "start": 0.0, "end": 4.2, "identifier": "+13105550199", "userId": "USagent01",
+          "content": "Thanks for calling, how can I help?" },
+        { "start": 4.5, "end": 9.1, "identifier": "+14155550100", "userId": "UScaller1",
+          "content": "Hi, I need a quote for the heat welding tools, can you call me back tomorrow?" }
+      ],
+      "duration": 9.1,
+      "status": "completed"
+    }
+  }
+}

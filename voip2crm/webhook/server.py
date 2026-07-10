@@ -27,6 +27,15 @@ log = logging.getLogger("voip2crm.webhook")
 
 
 def _to_record(provider: ProviderAdapter, pipeline: Pipeline, call: InboundCall) -> Optional[CallRecord]:
+    # Provider already gave us a transcript (Quo AI) — no download / WhisperX.
+    if call.transcript is not None:
+        return CallRecord(
+            message_id=call.call_id,
+            received_at=call.started_at,
+            subject=f"{call.direction} call",
+            caller_phone=call.counterparty(),
+            transcript=call.transcript,
+        )
     audio = provider.download(call, pipeline.audio_dir)
     if not audio:
         log.warning("no recording downloaded for call %s", call.call_id)
