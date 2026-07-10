@@ -26,7 +26,17 @@ from .base import InboundCall, ProviderAdapter, build_provider
 log = logging.getLogger("voip2crm.webhook")
 
 
-def _to_record(provider: ProviderAdapter, pipeline: Pipeline, call: InboundCall) -> Optional[CallRecord]:
+def _archive_recording(provider: ProviderAdapter, pipeline: Pipeline, call: InboundCall) -> Optional[str]:
+    """Download the recording into the persistent archive (for sales review).
+    No transcription — just store it. Returns the saved path."""
+    path = provider.download(call, pipeline.recordings_dir)
+    if path:
+        log.info("archived recording for call %s -> %s", call.call_id, path)
+    return path
+
+
+def _to_record(provider: ProviderAdapter, pipeline: Pipeline, call: InboundCall,
+               recording_ref: Optional[str] = None) -> Optional[CallRecord]:
     # Provider already gave us a transcript (Quo AI) — no download / WhisperX.
     if call.transcript is not None:
         return CallRecord(
@@ -35,7 +45,9 @@ def _to_record(provider: ProviderAdapter, pipeline: Pipeline, call: InboundCall)
             subject=f"{call.direction} call",
             caller_phone=call.counterparty(),
             transcript=call.transcript,
+            recording_ref=recording_ref,
         )
+    # Recording event in "transcribe" mode: download to the working dir, WhisperX runs.
     audio = provider.download(call, pipeline.audio_dir)
     if not audio:
         log.warning("no recording downloaded for call %s", call.call_id)
@@ -46,22 +58,44 @@ def _to_record(provider: ProviderAdapter, pipeline: Pipeline, call: InboundCall)
         subject=f"{call.direction} call",
         caller_phone=call.counterparty(),
         audio_path=audio,
+        recording_ref=recording_ref,
     )
 
 
-def _worker(pipeline: Pipeline, provider: ProviderAdapter, q: "queue.Queue[InboundCall]") -> None:
+def _worker(pipeline: Pipeline, provider: ProviderAdapter, cfg: dict,
+            q: "queue.Queue[InboundCall]") -> None:
+    recording_mode = (cfg.get("recording_mode") or "transcribe").lower()
+    base_url = (cfg.get("recordings_base_url") or "").rstrip("/")
+
     while True:
         call = q.get()
         try:
-            if pipeline.state.seen(call.call_id):
-                log.info("duplicate call %s; skipping", call.call_id)
+            is_transcript = call.transcript is not None
+            kind = "transcript" if is_transcript else "recording"
+            key = f"{call.call_id}:{kind}"      # dedupe per event kind, so both run
+            if pipeline.state.seen(key):
+                log.info("duplicate %s for call %s; skipping", kind, call.call_id)
                 continue
+
+            if not is_transcript and recording_mode == "archive":
+                # Store the audio for sales review; the note comes from the transcript event.
+                _archive_recording(provider, pipeline, call)
+                pipeline.state.mark(key)
+                continue
+            if not is_transcript and recording_mode == "off":
+                pipeline.state.mark(key)
+                continue
+
+            # Note-producing path (transcript event, or recording event in transcribe mode).
+            ref = None
+            if base_url:
+                ref = f"{base_url}/{call.call_id}.mp3"     # deterministic archive name
             log.info("processing %s call %s (%s)", call.direction, call.call_id,
                      call.counterparty() or "unknown number")
-            rec = _to_record(provider, pipeline, call)
+            rec = _to_record(provider, pipeline, call, recording_ref=ref)
             if rec is not None:
                 pipeline.process_record(rec)
-                pipeline.state.mark(call.call_id)
+                pipeline.state.mark(key)
         except Exception:
             log.exception("worker failed on call %s", call.call_id)
         finally:
@@ -76,7 +110,7 @@ def create_app(pipeline: Pipeline, webhook_cfg: dict) -> Flask:
     enforce_sig = bool(webhook_cfg.get("verify_signatures", False))
 
     work: "queue.Queue[InboundCall]" = queue.Queue()
-    threading.Thread(target=_worker, args=(pipeline, provider, work), daemon=True).start()
+    threading.Thread(target=_worker, args=(pipeline, provider, webhook_cfg, work), daemon=True).start()
 
     @app.get("/healthz")
     def healthz():

@@ -29,6 +29,7 @@ class Pipeline:
         self.skip_transcribe = skip_transcribe
         self.transcript_dir = Path(cfg.get("storage", "transcript_dir") or "data/transcripts")
         self.audio_dir = Path(cfg.get("storage", "audio_dir") or "data/audio")
+        self.recordings_dir = Path(cfg.get("storage", "recordings_dir") or "data/recordings")
         self.source = (cfg.get("source") or "gmail").lower()
 
         self.transcriber = Transcriber(cfg.section("whisperx"))

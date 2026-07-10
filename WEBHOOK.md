@@ -131,30 +131,49 @@ transcribe→CRM tail — by proving one at a time:
 5. **Register the webhook in OpenPhone and make one real call** — the only piece
    you can't fake.
 
-## Using Quo's AI transcripts (skip WhisperX)
+## Using Quo's AI transcripts (skip WhisperX) + archiving audio
 
 If you're on Quo Business or higher, Quo transcribes calls for you and sends the
 full transcript in the `call.transcript.completed` webhook — so you can drop
-WhisperX, ffmpeg, and the GPU entirely. Subscribe to that event instead of
-`call.recording.completed`, and set your own Quo number(s) under
-`webhook.openphone.my_numbers` so the receiver picks the other party as the CRM
-contact and labels speakers Agent vs Caller.
+WhisperX, ffmpeg, and the GPU entirely. To also keep the audio for sales review,
+subscribe to **both** events and let each do one job:
 
-Subscribe to **one** event per call (both resolve to the same call id, so mixing
-them just means whichever lands first wins the dedupe):
+- `call.transcript.completed` -> creates the Twenty note from Quo's transcript.
+- `call.recording.completed` -> with `webhook.recording_mode: archive`, downloads
+  and stores the audio in `data/recordings/<callId>.mp3`. No transcription, no
+  second note.
 
-- `call.transcript.completed` — Quo AI transcript, no WhisperX. Simplest.
-- `call.recording.completed` — downloads audio, WhisperX transcribes on your box.
-  Gives you speaker diarization, word timestamps, full offline control, and the
-  raw recording — at the cost of running (and maybe GPU-accelerating) WhisperX.
+The two events share a call id, so the receiver dedupes per event *kind* — both
+run, once each, in any arrival order. The note references the recording by its
+deterministic `<callId>.mp3` name; if you serve `data/recordings/` over your LAN
+or tunnel, set `webhook.recordings_base_url` and the note links straight to the
+audio.
 
-With the transcript event you can skip `./homelab/install_whisperx.sh` completely.
-Test it without a real call:
+Set `webhook.openphone.my_numbers` to your Quo line so the receiver picks the
+other party as the CRM contact and labels speakers Agent vs Caller. Formatting
+doesn't matter — `(657) 255-7214` and `+16572557214` both match.
+
+Create both webhooks (app UI, or API):
 
 ```bash
-python serve.py -v      # no --no-transcribe needed; there's nothing to transcribe
+curl -X POST https://api.openphone.com/v1/webhooks/calls \
+  -H "Authorization: Bearer $OPENPHONE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"url":"https://<host>/webhook?token=<WEBHOOK_TOKEN>","events":["call.recording.completed"]}'
+curl -X POST https://api.openphone.com/v1/webhooks/call-transcripts \
+  -H "Authorization: Bearer $OPENPHONE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"url":"https://<host>/webhook?token=<WEBHOOK_TOKEN>","events":["call.transcript.completed"]}'
+```
+
+Skip `./homelab/install_whisperx.sh` entirely. Test both paths locally:
+
+```bash
+python serve.py -v
+# transcript -> Twenty note:
 curl -X POST "http://localhost:8080/webhook?token=$WEBHOOK_TOKEN" \
   -H "Content-Type: application/json" -d @examples/openphone_transcript.json
+# recording -> archived to data/recordings/:
+curl -X POST "http://localhost:8080/webhook?token=$WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" -d @examples/openphone_recording.json
 ```
 
 ## Consent

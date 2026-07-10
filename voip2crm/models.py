@@ -14,6 +14,7 @@ class CallRecord:
     caller_name: Optional[str] = None
     caller_phone: Optional[str] = None
     audio_path: Optional[str] = None
+    recording_ref: Optional[str] = None   # where the archived recording lives (path or URL)
     google_transcript: str = ""           # Google's own transcript from the email body
     transcript: str = ""                  # WhisperX transcript (preferred)
     segments: list[dict] = field(default_factory=list)

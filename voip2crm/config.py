@@ -67,7 +67,7 @@ class Config:
         return node
 
     def ensure_dirs(self) -> None:
-        for key in ("audio_dir", "transcript_dir"):
+        for key in ("audio_dir", "transcript_dir", "recordings_dir"):
             d = self.get("storage", key)
             if d:
                 Path(d).mkdir(parents=True, exist_ok=True)

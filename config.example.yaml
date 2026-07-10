@@ -11,6 +11,15 @@ webhook:
   host: 0.0.0.0
   port: 8080
   path: /webhook
+  # What to do with call.recording.completed events:
+  #   archive     -> download & store the audio for review, no transcription (use
+  #                  Quo's transcript event for the note). This is the setup here.
+  #   transcribe  -> download & run WhisperX to produce the note (no Quo AI needed)
+  #   off         -> ignore recording events
+  recording_mode: archive
+  # Optional: if you serve data/recordings over your LAN/tunnel, set the base URL
+  # so notes link straight to the audio, e.g. https://voip2crm.example.com/recordings
+  recordings_base_url: null
   # Simple, reliable auth: the provider must hit .../webhook?token=<this>.
   shared_token: ${WEBHOOK_TOKEN}
   # Signature verification is defense-in-depth. Turn on once you've confirmed the
@@ -25,7 +34,7 @@ webhook:
     # For the transcript event, list your own Quo number(s) (E.164) so the other
     # party is picked as the CRM contact and speakers are labeled Agent/Caller.
     my_numbers:
-      - "+13105550199"
+      - "+16572557214"
   twilio:
     account_sid: ${TWILIO_ACCOUNT_SID}
     auth_token: ${TWILIO_AUTH_TOKEN}
@@ -106,6 +115,7 @@ alerts:
   email_to: you@example.com
 
 storage:
-  audio_dir: data/audio             # downloaded call audio lands here
+  audio_dir: data/audio             # working dir for audio when transcribing locally
+  recordings_dir: data/recordings   # archived call recordings (kept for sales review)
   transcript_dir: data/transcripts  # transcripts saved here
   state_db: data/state.sqlite       # tracks processed messages (idempotency)
