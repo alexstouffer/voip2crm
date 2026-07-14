@@ -1,4 +1,10 @@
-# Home lab deployment
+# Home lab deployment (Gmail / Google Voice source)
+
+> **This page covers the batch `source: gmail` path only** — polling Google Voice
+> voicemail emails, which needs WhisperX to transcribe the audio. If you're
+> capturing real calls from a VoIP provider (the default), you want
+> [WEBHOOK.md](WEBHOOK.md) instead: it uses your provider's transcripts and needs
+> no WhisperX at all.
 
 The home lab is the cheapest option, full stop — you already own the compute, so
 there's no per-call or idle billing, and none of the AWS push/Pub/Sub/API-Gateway
