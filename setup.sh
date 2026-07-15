@@ -20,15 +20,26 @@ echo "[*] Preparing local config & env…"
 
 cat <<'NOTE'
 
-Setup complete. Next steps:
-  1. Edit .env         -> TWENTY_API_KEY (and any optional keys)
-  2. Edit config.yaml  -> Twenty base_url, whisperx device/model, gmail query
-  3. Drop your Google OAuth client secret here as credentials.json
-  4. Ensure WhisperX is available in this venv:
-       pip install whisperx        # or: pip install -e '.[transcribe]'
-  5. First run (opens a browser to authorize Gmail, caches token.json):
-       source .venv/bin/activate
-       python run.py --once --no-transcribe --limit 3 -v
+Setup complete. Default path is VoIP webhooks (Quo/OpenPhone) -> Twenty.
 
-Then schedule it — see HOMELAB.md (systemd timer or cron).
+Next steps:
+  1. Edit .env:
+       TWENTY_API_KEY            (Twenty: Settings -> API & Webhooks)
+       WEBHOOK_TOKEN             (any long random string)
+       OPENPHONE_SIGNING_SECRET  (Quo: the webhook's "Reveal Signing Secret")
+  2. Edit config.yaml:
+       crm.twenty.base_url       (your Twenty URL, ending in /rest)
+       crm.provider: local       (for the first test; switch to twenty after)
+     Your Quo number and recording_mode: archive are already set.
+  3. Smoke test (no phone call needed):
+       source .venv/bin/activate
+       python serve.py -v
+       # in another terminal:
+       curl -X POST "http://localhost:8080/webhook?token=$WEBHOOK_TOKEN" \
+         -H "Content-Type: application/json" -d @examples/openphone_transcript.json
+     Expect a note + follow-up in data/crm_local.sqlite.
+  4. Create the Quo webhooks and expose the receiver: see WEBHOOK.md.
+
+Using Quo's AI transcripts means no WhisperX, ffmpeg, or Google setup.
+(For the alternate Google Voice voicemail path instead, see HOMELAB.md.)
 NOTE
