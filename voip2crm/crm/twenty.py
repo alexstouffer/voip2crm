@@ -5,7 +5,7 @@ Auth: Authorization: Bearer <API_KEY>  (Settings -> API & Webhooks -> Create key
 
 Two Twenty-isms this adapter handles:
   1. Associations go through join objects: a note links to a person via
-     /rest/noteTargets {noteId, personId}; a task via /rest/taskTargets.
+     /rest/noteTargets {noteId, targetPersonId}; a task via /rest/taskTargets.
   2. The note/task body field name is version-dependent. Older builds use a
      plain string `body`; recent builds use a rich-text `bodyV2` shaped like
      {"markdown": "..."}. Set crm.twenty.body_field accordingly (default "body").
@@ -117,7 +117,7 @@ class TwentyAdapter(CRMAdapter):
             f"---\n\n{rec.best_transcript()}"
         )
         note_id = self._create_with_body("/notes", {"title": title[:255]}, text)
-        self._post("/noteTargets", {"noteId": note_id, "personId": contact_id})
+        self._post("/noteTargets", {"noteId": note_id, "targetPersonId": contact_id})
         return note_id
 
     def create_followup_task(
@@ -130,7 +130,7 @@ class TwentyAdapter(CRMAdapter):
         if priority and priority != "MEDIUM":
             props["title"] = f"[{priority}] {props['title']}"[:255]
         task_id = self._create_with_body("/tasks", props, body)
-        self._post("/taskTargets", {"taskId": task_id, "personId": contact_id})
+        self._post("/taskTargets", {"taskId": task_id, "targetPersonId": contact_id})
         return task_id
 
     # --- internals ---------------------------------------------------------
