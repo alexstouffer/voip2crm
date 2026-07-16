@@ -122,7 +122,7 @@ Two local files, both gitignored:
 | `whisperx` | only used when `recording_mode: transcribe` |
 | `storage` | `recordings_dir`, transcript dir, state db |
 
-Phone-number formatting doesn't matter — `(657) 255-7214` and `+16572557214`
+Phone-number formatting doesn't matter — `(555) 555-0100` and `+15555550100`
 both match.
 
 ## Usage
