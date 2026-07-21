@@ -13,6 +13,10 @@ class CallRecord:
     subject: str = ""
     caller_name: Optional[str] = None
     caller_phone: Optional[str] = None
+    # Business context from the local directory lookup (by phone).
+    company_name: Optional[str] = None
+    company_website: Optional[str] = None
+    company_domain: Optional[str] = None
     audio_path: Optional[str] = None
     recording_ref: Optional[str] = None   # where the archived recording lives (path or URL)
     google_transcript: str = ""           # Google's own transcript from the email body

@@ -35,6 +35,12 @@ class Pipeline:
         self.transcriber = Transcriber(cfg.section("whisperx"))
         self.extractor = Extractor(cfg.section("extract"))
 
+        dir_cfg = cfg.section("directory")
+        self.directory = None
+        if dir_cfg.get("enabled"):
+            from .directory import Directory
+            self.directory = Directory(dir_cfg)
+
         crm_cfg = dict(cfg.section("crm"))
         if dry_run:
             crm_cfg["provider"] = "local"
@@ -67,6 +73,18 @@ class Pipeline:
             rec.transcript, rec.segments = text, segments
 
         self.extractor.enrich(rec)
+
+        # Directory lookup: fill in business context by phone number.
+        if self.directory and rec.caller_phone:
+            hit = self.directory.lookup(rec.caller_phone)
+            if hit:
+                rec.company_name = hit.get("company") or None
+                rec.company_website = hit.get("website") or None
+                rec.company_domain = hit.get("domain") or None
+                log.info("  directory match: %s", rec.company_name)
+            else:
+                log.info("  no directory match for %s", rec.caller_phone)
+
         self._save_transcript(rec)
 
         contact_id = self.crm.upsert_contact(rec)
