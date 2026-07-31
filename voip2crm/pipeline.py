@@ -85,6 +85,17 @@ class Pipeline:
             else:
                 log.info("  no directory match for %s", rec.caller_phone)
 
+        # Conversation vs voicemail counting (by phone; conversations only).
+        if rec.caller_phone:
+            prior_conv, prior_vm = self.state.call_counts(rec.caller_phone)
+            if rec.is_conversation:
+                rec.conversation_number = prior_conv + 1
+                rec.voicemail_count = prior_vm
+            else:
+                rec.conversation_number = prior_conv
+                rec.voicemail_count = prior_vm + 1
+            self.state.log_call(rec.caller_phone, rec.message_id, rec.is_conversation)
+
         self._save_transcript(rec)
 
         contact_id = self.crm.upsert_contact(rec)

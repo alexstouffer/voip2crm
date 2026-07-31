@@ -51,16 +51,9 @@ class LocalAdapter(CRMAdapter):
         return cid
 
     def add_note(self, contact_id: str, rec: CallRecord) -> str:
+        from ..notes import render_note_body
         nid = str(uuid.uuid4())
-        body = json.dumps(
-            {
-                "summary": rec.summary,
-                "transcript": rec.best_transcript(),
-                "received_at": rec.received_at.isoformat() if rec.received_at else None,
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
+        body = render_note_body(rec)
         self.conn.execute(
             "INSERT INTO notes (id, contact_id, body, created) VALUES (?, ?, ?, ?)",
             (nid, contact_id, body, datetime.now().isoformat()),
