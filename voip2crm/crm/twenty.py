@@ -20,10 +20,22 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+import logging
+
 import requests
 
 from ..models import CallRecord
 from .base import CRMAdapter
+
+log = logging.getLogger("voip2crm.crm.twenty")
+
+
+def _as_url(s: Optional[str]) -> Optional[str]:
+    """Normalize a bare domain/website into a URL Twenty accepts."""
+    s = (s or "").strip()
+    if not s:
+        return None
+    return s if s.startswith(("http://", "https://")) else f"https://{s}"
 
 
 class TwentyAdapter(CRMAdapter):
@@ -104,7 +116,42 @@ class TwentyAdapter(CRMAdapter):
             if self.default_calling_code:
                 phones["primaryPhoneCallingCode"] = self.default_calling_code
             props["phones"] = phones
+        # Directory enrichment: create/find the company and link the person to it.
+        if rec.company_name:
+            company_id = self.upsert_company(rec.company_name, rec.company_website or rec.company_domain)
+            if company_id:
+                props["companyId"] = company_id
         return self._extract_id(self._post("/people", props))
+
+    def upsert_company(self, name: str, website: Optional[str] = None) -> Optional[str]:
+        """Find-or-create a company by name; return its id. Failures are
+        non-fatal — a missing company link shouldn't drop the whole call."""
+        name = (name or "").strip()
+        if not name:
+            return None
+        try:
+            found = self._find_company_by_name(name)
+            if found:
+                return found
+            props: dict = {"name": name}
+            url = _as_url(website)
+            if url:
+                props["domainName"] = {"primaryLinkUrl": url}
+            return self._extract_id(self._post("/companies", props))
+        except requests.HTTPError:
+            log.warning("company upsert failed for %r; creating person without link", name)
+            return None
+
+    def _find_company_by_name(self, name: str) -> Optional[str]:
+        try:
+            j = self._get("/companies", params={"filter": f"name[eq]:{name}", "limit": 1})
+            data = j.get("data", {})
+            rows = data.get("companies") if isinstance(data, dict) else None
+            if rows:
+                return rows[0]["id"]
+        except requests.HTTPError:
+            pass
+        return None
 
     def add_note(self, contact_id: str, rec: CallRecord) -> str:
         title = f"Call — {rec.display_name()} — {self._date_str(rec.received_at)}"

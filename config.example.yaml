@@ -114,6 +114,15 @@ alerts:
   email_self: false                 # email yourself a reminder via Gmail
   email_to: you@example.com
 
+# --- directory enrichment: look up caller by phone in a local CSV ----------
+directory:
+  enabled: true
+  path: data/directory.csv     # your exported sheet (copy it here on the homelab)
+  phone_column: phone          # column headers in your CSV
+  company_column: company
+  website_column: website
+  domain_column: domain
+
 storage:
   audio_dir: data/audio             # working dir for audio when transcribing locally
   recordings_dir: data/recordings   # archived call recordings (kept for sales review)
