@@ -127,16 +127,27 @@ both match.
 
 ## Usage
 
+The receiver is a server, not a poller — it runs in the foreground and listens
+for your provider to POST. There's no "watch" mode; you start `serve.py` and
+leave it running (the terminal streams every request as it arrives). Use a second
+terminal for tests or other commands.
+
+**Terminal 1 — start the receiver** (leave running; Ctrl-C to stop):
+
 ```bash
 source .venv/bin/activate
-python serve.py -v                 # start the receiver (default :8080)
-curl localhost:8080/healthz
+set -a; source .env; set +a        # load WEBHOOK_TOKEN etc. into the process
+python serve.py -v                 # listens on :8080
 ```
 
-Test without making a real call:
+**Terminal 2 — smoke test without making a real call:**
 
 ```bash
-# transcript -> note (+ follow-up task; the sample asks for a callback)
+source .venv/bin/activate
+set -a; source .env; set +a
+curl localhost:8080/healthz        # -> {"ok": true}
+
+# transcript -> Twenty note (+ follow-up task; the sample asks for a callback)
 curl -X POST "http://localhost:8080/webhook?token=$WEBHOOK_TOKEN" \
   -H "Content-Type: application/json" -d @examples/openphone_transcript.json
 
@@ -145,15 +156,19 @@ curl -X POST "http://localhost:8080/webhook?token=$WEBHOOK_TOKEN" \
   -H "Content-Type: application/json" -d @examples/openphone_recording.json
 ```
 
-Start with `crm.provider: local` (writes to `data/crm_local.sqlite`) to validate
-the plumbing, then switch to `twenty`.
+Watch Terminal 1 for the result: caller resolved, `Note added to contact ...`,
+`Follow-up task ... created`. Start with `crm.provider: local` (writes to
+`data/crm_local.sqlite`) to validate the plumbing, then switch to `twenty`.
 
-Run it as a service:
+**Run it always-on** with systemd — this is what you want once your provider is
+pointed at the box, since calls arrive at any hour. It survives reboots and
+restarts on crash. The app loads `.env` from its `WorkingDirectory` on startup.
 
 ```bash
-sudo cp homelab/voip2crm-webhook.service /etc/systemd/system/   # edit user/paths
+sudo cp homelab/voip2crm-webhook.service /etc/systemd/system/
+sudo nano /etc/systemd/system/voip2crm-webhook.service   # set User=, WorkingDirectory, ExecStart path
 sudo systemctl daemon-reload && sudo systemctl enable --now voip2crm-webhook
-journalctl -u voip2crm-webhook -f
+journalctl -u voip2crm-webhook -f                        # follow the live log
 ```
 
 ## Follow-up detection
