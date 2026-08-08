@@ -154,15 +154,10 @@ class TwentyAdapter(CRMAdapter):
         return None
 
     def add_note(self, contact_id: str, rec: CallRecord) -> str:
-        title = f"Call — {rec.display_name()} — {self._date_str(rec.received_at)}"
-        recording_line = f"**Recording:** {rec.recording_ref}\n\n" if rec.recording_ref else ""
-        text = (
-            f"**Summary:** {rec.summary}\n\n"
-            f"**Caller:** {rec.display_name()}  \n"
-            f"**Received:** {self._date_str(rec.received_at)}\n\n"
-            f"{recording_line}"
-            f"---\n\n{rec.best_transcript()}"
-        )
+        from ..notes import render_note_body, render_note_title
+
+        title = render_note_title(rec)
+        text = render_note_body(rec)
         note_id = self._create_with_body("/notes", {"title": title[:255]}, text)
         self._post("/noteTargets", {"noteId": note_id, "targetPersonId": contact_id})
         return note_id

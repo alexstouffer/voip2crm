@@ -68,13 +68,18 @@ whisperx:
   max_speakers: null
 
 extract:
-  # Rule-based follow-up detection always runs. The LLM pass is optional and,
-  # when enabled, produces a cleaner summary + structured follow-up fields.
-  use_llm: false
-  llm_provider: anthropic
+  # Rule-based detection always runs (and is the fallback if the LLM is down).
+  # The LLM pass classifies follow-up (committed/soft/not_interested/none),
+  # decides conversation-vs-voicemail, and pulls contact details for review.
+  use_llm: true
+  llm_provider: ollama          # ollama (local) | anthropic (cloud)
+  # Ollama — CPU-only pick is qwen3.5:4b; with a GPU try qwen3:7b.
+  ollama_url: http://localhost:11434/api/chat
+  ollama_model: qwen3.5:4b
+  # Anthropic — only if llm_provider: anthropic
   anthropic_api_key: ${ANTHROPIC_API_KEY}
   anthropic_model: claude-sonnet-4-6
-  # Phrases that flag a needed follow-up (case-insensitive substring match).
+  # Fallback keyword match if the LLM is unreachable (never a silent miss).
   followup_keywords:
     - call me back
     - get back to me
