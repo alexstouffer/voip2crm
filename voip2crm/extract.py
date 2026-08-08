@@ -122,30 +122,24 @@ class Extractor:
 
     def _system_prompt(self) -> str:
         return (
-            "You analyze one outbound sales call transcript and return ONLY a JSON "
-            "object (no markdown, no prose). Schema:\n"
-            "{\n"
-            '  "is_conversation": bool,   // true if two people actually spoke; '
-            "false if it is a voicemail / answering machine / no answer\n"
-            '  "summary": string,         // 1-2 sentences\n'
-            '  "followup_status": "committed" | "soft" | "not_interested" | "none",\n'
-            '  "followup_reason": string, // short quote/paraphrase of the cue\n'
-            '  "due_date": string | null, // ISO 8601 if a concrete time was agreed\n'
-            '  "priority": "LOW" | "MEDIUM" | "HIGH",\n'
-            '  "detected_contacts": [ {"name": string|null, "title": string|null, '
-            '"email": string|null} ]\n'
-            "}\n"
-            "Rules for followup_status:\n"
-            "- committed: a concrete next step BOTH sides accept — a specific time "
-            "(\"next Friday\", \"next quarter\"), OR a requested deliverable "
-            "(\"send me a quote\").\n"
-            "- soft: vague or non-committal (\"let me think about it\", \"reach out "
-            "sometime\") — often a polite maybe. Do NOT invent a due date.\n"
-            "- not_interested: an explicit no / decline / do-not-contact.\n"
-            "- none: no follow-up cue at all.\n"
-            "Extract detected_contacts only from what was actually said; leave "
-            "fields null if unsure. Spoken emails are often garbled — include your "
-            "best guess but never invent."
+            "Analyze one outbound sales call transcript. Return ONLY JSON:\n"
+            '{"is_conversation": bool, "summary": str, '
+            '"followup_status": "committed"|"soft"|"not_interested"|"none", '
+            '"followup_reason": str, "due_date": ISO8601|null, '
+            '"priority": "LOW"|"MEDIUM"|"HIGH", '
+            '"detected_contacts": [{"name": str|null, "title": str|null, "email": str|null}]}\n'
+            "is_conversation: false if voicemail/answering machine/no answer.\n"
+            "followup_status:\n"
+            "- committed: both sides accept a concrete next step — a specific time "
+            "(next Friday, next quarter) OR a requested deliverable (send a quote).\n"
+            "- soft: vague/non-committal (let me think about it, reach out sometime). "
+            "No due_date.\n"
+            "- not_interested: explicit no / decline / do-not-contact.\n"
+            "- none: no follow-up cue.\n"
+            "detected_contacts: ONLY people/titles/emails explicitly stated in the "
+            "transcript. If none are stated, return []. Never invent a contact. "
+            "Spoken emails are often garbled — include your best guess but never "
+            "fabricate one."
         )
 
     def _user_prompt(self, text: str) -> str:
@@ -197,10 +191,11 @@ class Extractor:
                     {"role": "user", "content": self._user_prompt(text)},
                 ],
                 "stream": False,
+                "think": False,          # critical on CPU: thinking chains take minutes
                 "format": schema,
-                "options": {"temperature": 0},
+                "options": {"temperature": 0, "num_ctx": 16384},
             },
-            timeout=180,
+            timeout=600,
         )
         resp.raise_for_status()
         content = resp.json().get("message", {}).get("content", "{}")
@@ -239,8 +234,6 @@ class Extractor:
         rec.followup_reason = data.get("followup_reason") or rec.followup_reason
         rec.summary = data.get("summary") or rec.summary
         rec.priority = (data.get("priority") or rec.priority).upper()
-        rec.detected_contacts = [c for c in (data.get("detected_contacts") or []) if _has_any(c)]
-
         # Conversation vs voicemail — cross-check the model against a heuristic.
         llm_conv = data.get("is_conversation")
         heur_conv = _looks_like_conversation(text)
@@ -250,6 +243,13 @@ class Extractor:
             rec.is_conversation = bool(llm_conv)
             if bool(llm_conv) != heur_conv:
                 rec.classification_uncertain = True
+
+        # Contacts only from real conversations — a voicemail never yields a new
+        # contact (company details come from the directory sheet instead).
+        if rec.is_conversation:
+            rec.detected_contacts = [c for c in (data.get("detected_contacts") or []) if _has_any(c)]
+        else:
+            rec.detected_contacts = []
 
         # Due date only for committed follow-ups.
         rec.followup_due = None
