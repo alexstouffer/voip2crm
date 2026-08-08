@@ -156,7 +156,7 @@ def _ext_from_content_type(ct: str) -> Optional[str]:
 
 def _norm(s: str) -> str:
     # Canonical form for matching: digits only, last 10 (handles +1/country code
-    # and any formatting like "(657) 255-7214" vs "+16572557214").
+    # and any formatting like "(555) 555-0100" vs "+15555550100").
     d = re.sub(r"\D", "", s or "")
     return d[-10:] if len(d) >= 10 else d
 

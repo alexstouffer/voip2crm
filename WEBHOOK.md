@@ -151,7 +151,7 @@ audio.
 
 Set `webhook.openphone.my_numbers` to your Quo line so the receiver picks the
 other party as the CRM contact and labels speakers Agent vs Caller. Formatting
-doesn't matter — `(657) 255-7214` and `+16572557214` both match.
+doesn't matter — `(555) 555-0100` and `+15555550100` both match.
 
 Create both webhooks (app UI, or API):
 

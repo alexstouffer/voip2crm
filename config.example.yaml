@@ -34,7 +34,7 @@ webhook:
     # For the transcript event, list your own Quo number(s) (E.164) so the other
     # party is picked as the CRM contact and speakers are labeled Agent/Caller.
     my_numbers:
-      - "+16572557214"
+      - "+15555550100"
   twilio:
     account_sid: ${TWILIO_ACCOUNT_SID}
     auth_token: ${TWILIO_AUTH_TOKEN}
